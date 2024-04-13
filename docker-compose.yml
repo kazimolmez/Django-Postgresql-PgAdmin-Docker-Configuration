@@ -1,7 +1,10 @@
+version: '3'
 services:
-  django_db:
+  db:
     image: postgres
-    container_name: ${COMPOSE_PROJECT_NAME}-db
+    restart: always
+    env_file:
+      - .env
     volumes:
       - ./data/db:/var/lib/postgresql/data
     environment:
@@ -10,44 +13,47 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       SERVICE_NAME: postgres
     ports:
-      - 5432:5432
+      - "5432:5432"
     networks:
-      - django_network
+      - network
 
-  django_pgadmin:
+  pgadmin:
     image: dpage/pgadmin4
-    container_name: ${COMPOSE_PROJECT_NAME}-pgadmin
-    restart: unless-stopped
+    restart: always
+    env_file:
+      - .env
     environment:
       PGADMIN_DEFAULT_EMAIL: ${DB_USERNAME}@${DB_USERNAME}.com
       PGADMIN_DEFAULT_PASSWORD: ${DB_USERNAME}
       MASTER_PASSWORD_REQUIRED: False
     ports:
-      - 8080:80
+      - "8080:80"
     networks:
-      - django_network
-    depends_on:
-      - django_db
+      - network
+    links:
+      - db:${DB_HOST}
 
-  django_web:
+  web:
     container_name: ${COMPOSE_PROJECT_NAME}-web
     build: .
     command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - .env
     volumes:
       - .:/app
     ports:
-      - 8000:8000
+      - "8000:8000"
     environment:
       DATABASE_HOST: ${DB_HOST}
       DATABASE_NAME: ${DB_DATABASE}
       DATABASE_USER: ${DB_USERNAME}
       DATABASE_PASSWORD: ${DB_PASSWORD}
       DATABASE_PORT: ${DB_PORT}
-    depends_on:
-      - django_db
+    links:
+      - db:${DB_HOST}
     networks:
-      - django_network
+      - network
 
 networks:
-  django_network:
+  network:
     driver: bridge
